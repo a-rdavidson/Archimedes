@@ -45,7 +45,7 @@ int main(int argc, char ** argv) {
     std::string file_path = argv[1];
     std::string flags;
     for (int i = 2; i < argc; i++) {
-      flags = flags + agrv[i];
+      flags = flags + argv[i] + " ";
     }
     std::cout << "flags: " << flags << std::endl; 
     std::cout << "file_path: " << file_path << std::endl; 
