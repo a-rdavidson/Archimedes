@@ -2,7 +2,7 @@
 #include <fstream>
 #include <curl/curl.h>
 
-int upload_file(const std::string& file_path) {
+int send_file(const std::string& file_path, const std::string& flags) {
     CURL* curl;
     CURLcode res;
     curl_mime* mime;
@@ -12,11 +12,16 @@ int upload_file(const std::string& file_path) {
     if (curl) {
         mime = curl_mime_init(curl);
         
-        // Add file part to the request
+        // Add file part 
         part = curl_mime_addpart(mime);
         curl_mime_name(part, "file");
         curl_mime_filedata(part, file_path.c_str());
         
+        // Add the flags part
+        part = curl_mime_addpart(mime); 
+        curl_mime_name(part, "flags");
+        curl_mime_data(part, flags.c_str(), CURL_ZERO_TERMINATED); 
+
         curl_easy_setopt(curl, CURLOPT_URL, "http://10.7.48.39:8080/upload");
 
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
@@ -38,9 +43,14 @@ int upload_file(const std::string& file_path) {
 
 int main(int argc, char ** argv) {
     std::string file_path = argv[1];
+    std::string flags;
+    for (int i = 2; i < argc; i++) {
+      flags = flags + agrv[i];
+    }
+    std::cout << "flags: " << flags << std::endl; 
     std::cout << "file_path: " << file_path << std::endl; 
 
-    upload_file(file_path);
+    send_file(file_path, flags);
     return 0;
 }
 
