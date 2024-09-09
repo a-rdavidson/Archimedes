@@ -1,0 +1,5 @@
+*.o
+*.swp
+server
+client
+image_handler
