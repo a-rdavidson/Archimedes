@@ -34,10 +34,15 @@ int main() {
 
   CROW_ROUTE(app, "/upload").methods(crow::HTTPMethod::Post)
   ([](const crow::request& req) {
+    std::string file_data = req.body; 
+    
     std::ofstream file("/tmp/uploaded_file", std::ios::binary); 
     file.write(req.body.c_str(), req.body.size()); 
     file.close(); 
-    
+
+    std::string flags = req.url_params.get("flags") ? req.url_params.get("flags") : "none"; 
+    std::cout << "Received flags: " << flags << std::endl;
+
 
     RGBMatrix::Options matrix_options; 
     rgb_matrix::RuntimeOptions runtime_opt; 
