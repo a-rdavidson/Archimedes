@@ -2,6 +2,7 @@
 #include <fstream> 
 #include <iostream> 
 #include <vector>
+#include <algorithm>
 /* in file file_checks.cpp 
  *
  * function checks if the uploaded file's MIME type 
