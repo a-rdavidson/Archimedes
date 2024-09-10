@@ -1,7 +1,7 @@
 #pragma once 
 #include <fstream> 
 #include <iostream> 
-
+#include <vector>
 /* in file file_checks.cpp 
  *
  * function checks if the uploaded file's MIME type 
