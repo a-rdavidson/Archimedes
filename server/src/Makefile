@@ -11,8 +11,11 @@ CXXFLAGS=$(CFLAGS)
 MAGICK_CXXFLAGS?=$(shell GraphicsMagick++-config --cppflags --cxxflags)
 MAGICK_LDFLAGS?=$(shell GraphicsMagick++-config --ldflags --libs)
 
-server: server.o image_handler.o $(RGB_LIBRARY) 
-	$(CXX) $< -o $@ $(LDFLAGS) $(MAGICK_LDFLAGS)
+server: server.o image_handler.o file_checks.o $(RGB_LIBRARY) 
+	$(CXX) $^ -o $@ $(LDFLAGS) $(MAGICK_LDFLAGS)
+
+file_checks.o: file_checks.cpp 
+	$(CXX) -I$(ARCH_INC_DIR) $(CXXFLAGS) $(MAGICK_CXXFLAGS) -c -o $@ $<
 
 server.o: server.cpp
 	$(CXX) -I$(ARCH_INC_DIR) $(CXXFLAGS) $(MAGICK_CXXFLAGS) -c -o $@ $<

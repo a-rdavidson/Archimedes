@@ -4,6 +4,7 @@
 #include "led-matrix.h"
 #include "pixel-mapper.h"
 #include "content-streamer.h"
+#include "file_checks.hpp"
 
 #include <fcntl.h>
 #include <math.h>
@@ -35,10 +36,20 @@ int main() {
   CROW_ROUTE(app, "/upload").methods(crow::HTTPMethod::Post)
   ([](const crow::request& req) {
     std::string file_data = req.body; 
-    
-    std::ofstream file("/tmp/uploaded_file", std::ios::binary); 
+    std::string content_type = req.get_header_value("Content-Type"); 
+
+    if(!is_valid_mime_type(content_type)) {
+      return crow::response(400, "Invalid File Type. Only JPG, PNG, GIF, & MP4"); 
+    }
+
+    std::string file_path = "/tmp/uploaded_file"; 
+    std::ofstream file(file_path, std::ios::binary); 
     file.write(req.body.c_str(), req.body.size()); 
-    file.close(); 
+    file.close();
+
+    if(!is_valid_file_signature(file_path)) {
+      return crow::response(400, "Invalid file signature. File Format not supported"); 
+    }
 
     std::string flags = req.url_params.get("flags") ? req.url_params.get("flags") : "none"; 
     std::cout << "Received flags: " << flags << std::endl;
