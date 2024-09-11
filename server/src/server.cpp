@@ -16,6 +16,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <filesystem>
 
 #include <algorithm>
 #include <map>
@@ -39,6 +40,7 @@ int main() {
     std::string content_type = req.get_header_value("Content-Type"); 
 
     if(!is_valid_mime_type(content_type)) {
+      
       return crow::response(400, "Invalid File Type. Only JPG, PNG, GIF, & MP4"); 
     }
 
@@ -48,12 +50,33 @@ int main() {
     file.close();
 
     if(!is_valid_file_signature(file_path)) {
-      return crow::response(400, "Invalid file signature. File Format not supported"); 
+      try {
+        std::filesystem::remove(file_path); 
+      } catch (const std::filesystem::filesystem_error& err) {
+        std::cout << "Filesystem error: " << err.what() << std::endl; 
+      }
+      return crow::response(400, "Invalid file signature. File Format not supported");
     }
+
 
     std::string flags = req.url_params.get("flags") ? req.url_params.get("flags") : "none"; 
     std::cout << "Received flags: " << flags << std::endl;
 
+    char delimeter = ' '; 
+    int delim_count = 0; 
+
+    for (int i = 0; i < flags.size(); i++) {
+      if (flags[i] == delimeter) {
+        count++;
+      }
+    }
+    
+    char ** argv = string_to_char_array(flags, delim_count + 1);
+    
+    for (int i = 0; i < delim_count + 1; i++) { 
+      std::cout << "argv[" << i << "] " << argv[i]; 
+    }
+    std::cout << "delim_count: " << delim_count;
 
     RGBMatrix::Options matrix_options; 
     rgb_matrix::RuntimeOptions runtime_opt; 

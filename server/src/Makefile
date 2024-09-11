@@ -4,6 +4,7 @@ RGB_LIB_DIR=$(ARCH_DIR)/server/lib
 RGB_LIB_NAME=rgbmatrix
 RGB_LIBRARY=$(RGB_LIB_DIR)/lib$(RGB_LIB_NAME).a
 LDFLAGS+=-L$(RGB_LIB_DIR) -l$(RGB_LIB_NAME) -lrt -lm -lpthread
+OBJ=server.o image_hander.o file_checks.o string_manipulation.o
 
 CFLAGS=-Wall -O3 -Wextra -Wno-unused-parameter
 CXXFLAGS=$(CFLAGS) 
@@ -11,7 +12,7 @@ CXXFLAGS=$(CFLAGS)
 MAGICK_CXXFLAGS?=$(shell GraphicsMagick++-config --cppflags --cxxflags)
 MAGICK_LDFLAGS?=$(shell GraphicsMagick++-config --ldflags --libs)
 
-server: server.o image_handler.o file_checks.o $(RGB_LIBRARY) 
+server: $(OBJ) $(RGB_LIBRARY) 
 	$(CXX) $^ -o $@ $(LDFLAGS) $(MAGICK_LDFLAGS)
 
 file_checks.o: file_checks.cpp 
@@ -22,6 +23,10 @@ server.o: server.cpp
 
 image_handler.o: image_handler.cpp
 	$(CXX) -I$(ARCH_INC_DIR) $(CXXFLAGS) $(MAGICK_CXXFLAGS) -c -o $@ $<
+
+string_manipulation.o: string_manipulation.cpp
+	$(CXX) -I$(ARCH_INC_DIR) $(CXXFLAGS) $(MAGICK_CXXFLAGS) -c -o $@ $<
+
 
 
 
