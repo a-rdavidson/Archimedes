@@ -31,4 +31,4 @@ string_manipulation.o: string_manipulation.cpp
 
 
 clean: 
-	rm -f server server.o image_handler.o
+	rm -f $(OBJ)
