@@ -5,6 +5,7 @@
 #include "pixel-mapper.h"
 #include "content-streamer.h"
 #include "file_checks.hpp"
+#include "string_manipulation.hpp"
 
 #include <fcntl.h>
 #include <math.h>
@@ -38,12 +39,12 @@ int main() {
   ([](const crow::request& req) {
     std::string file_data = req.body; 
     std::string content_type = req.get_header_value("Content-Type"); 
-
-    if(!is_valid_mime_type(content_type)) {
+    std::cout << content_type << std::endl;
+/*    if(!is_valid_mime_type(content_type)) {
       
       return crow::response(400, "Invalid File Type. Only JPG, PNG, GIF, & MP4"); 
     }
-
+*/
     std::string file_path = "/tmp/uploaded_file"; 
     std::ofstream file(file_path, std::ios::binary); 
     file.write(req.body.c_str(), req.body.size()); 
@@ -67,16 +68,16 @@ int main() {
 
     for (int i = 0; i < flags.size(); i++) {
       if (flags[i] == delimeter) {
-        count++;
+        delim_count++;
       }
     }
     
-    char ** argv = string_to_char_array(flags, delim_count + 1);
+    int num_flags = delim_count + 1;
+    char ** argv; string_to_char_array(flags, num_flags);
     
-    for (int i = 0; i < delim_count + 1; i++) { 
-      std::cout << "argv[" << i << "] " << argv[i]; 
+    for (int i = 0; i < num_flags; i++) {
+      std:: cout << argv[i] <<  std::endl;
     }
-    std::cout << "delim_count: " << delim_count;
 
     RGBMatrix::Options matrix_options; 
     rgb_matrix::RuntimeOptions runtime_opt; 
@@ -84,7 +85,7 @@ int main() {
     runtime_opt.drop_priv_user = getenv("SUDO_UID"); 
     runtime_opt.drop_priv_group = getenv("SUDO_GID"); 
 
-
+    free_char_array(argv, num_flags); 
 
     return crow::response(200, "Image received and processed");
   });

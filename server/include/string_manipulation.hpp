@@ -10,7 +10,7 @@
  * so they can be passed to rgb_matrix::ParseOptionsFromFlags
  * to begin initialization process of rgb matrix
  */ 
-char ** string_to_char_array(const std::string&, int);
+char ** string_to_char_array(const std::string&, int&);
 
 /*
  * only for use with char** returned from 
