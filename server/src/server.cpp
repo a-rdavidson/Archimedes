@@ -6,6 +6,7 @@
 #include "content-streamer.h"
 #include "file_checks.hpp"
 #include "string_manipulation.hpp"
+#include "multipart_parser.h"
 
 #include <fcntl.h>
 #include <math.h>
@@ -31,6 +32,29 @@ using rgb_matrix::Canvas;
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
+
+// Data structure to hold parsed form data
+struct FormData {
+  std::string file_data; 
+  std::string file_name;
+  std::string flags;
+};
+
+/* 
+ * File part callback
+ */
+
+int on_part_data(multipart_parser* parser, const char *at, size_t length, void * user_data) {
+  FormData* form_data = static_cast<FormData*>(user_data);
+  
+  form_data->file_data.append(at, length);
+  return 0;
+}
+
+/* 
+ * MORE MULTIPART FORM HANDLING CALLBACKS GO HERE
+ * Unfinished 
+ */
 
 std::string read_file(const std::string& file_path) {
   std::ifstream file(file_path); 
