@@ -32,62 +32,50 @@ using rgb_matrix::Canvas;
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
-
-// Data structure to hold parsed form data
-struct FormData {
-  std::string file_data; 
-  std::string file_name;
-  std::string flags;
-};
-
-/* 
- * File part callback
- */
-
-int on_part_data(multipart_parser* parser, const char *at, size_t length, void * user_data) {
-  FormData* form_data = static_cast<FormData*>(user_data);
-  
-  form_data->file_data.append(at, length);
-  return 0;
-}
-
-int on_header_field(multipart_parser* parser, const char * at, size_t length, void * user_data) {
-  FormData* form_data = static_cast<FormData*>(user_data);
-  std::string header_field(at, length); 
-  
-  
-  if (header_field.find("filename") != std::string::npos) {
-    size_t start = header_field.find("filename=\"")  + 10; // 10 = length of "filename\"'
-    size_t end = header_field.find("\"");
-    form_data->file_name = header_field.substr(start, end - start);
-  }
-  if (header_field.find("name=\"flags\"") != std::string::npos) {
-    form_data->flags = header_field.substr(length);
-  }
-  return 0;
-}
-
-int on_part_data_end(multipart_parser* parser, void * user_data) {
-  return 0; 
-}
-
 std::string extract_boundary(const std::string& content_type) {
-  size_t boundary_pos = content_type.find("boundary=");
-  if (boundary_pos == std::string::npos) {
-    return "";
-  }
-
-  boundary_pos += 9;    /* Boundary String starts after "boundary=" */
-                        /* which is 9 chars long */  
-  std::string boundary = content_type.substr(boundary_pos); 
-
-  return boundary;
+    // Find the position of the "boundary=" part in the Content-Type header
+    size_t boundary_pos = content_type.find("boundary=");
+    if (boundary_pos == std::string::npos) {
+        // If "boundary=" is not found, return an empty string (invalid case)
+        return "";
+    }
+    
+    // The boundary string starts right after "boundary=" (which is 9 characters long)
+    boundary_pos += 9;
+    
+    // Extract the boundary string from the Content-Type header
+    std::string boundary = content_type.substr(boundary_pos);
+    
+    // Return the extracted boundary
+    return boundary;
 }
 
-/* 
- * MORE MULTIPART FORM HANDLING CALLBACKS GO HERE
- * Unfinished 
- */
+void parse_multipart_data(const crow::request& req, const std::string& body, std::string * file_data, std::string * flags) {
+    auto content_type_it = req.headers.find("Content-Type"); 
+    if (content_type_it == req.headers.end()) {
+      return;
+    }
+
+    std::string content_type = content_type_it->second;
+    std::string boundary = extract_boundary(content_type); 
+
+    size_t boundary_pos = body.find(boundary);
+    size_t file_pos = body.find("name=\"file\"", boundary_pos);
+    size_t flags_pos = body.find("name=\"flags\"", file_pos);
+    std::cout << "boundary_pos " << boundary_pos << " flags_pos " << flags_pos << " file_pos " << file_pos << std::endl;
+    if (flags_pos != std::string::npos) {
+        size_t flags_start = body.find("\r\n\r\n", flags_pos) + 4;
+        size_t flags_end = body.find("\r\n", flags_start);
+        std::cout << body.substr(flags_start, flags_end - flags_start) << std::endl;
+        *flags = body.substr(flags_start, flags_end - flags_start);
+    }
+
+    if (file_pos != std::string::npos) {
+        size_t file_start = body.find("\r\n\r\n", file_pos) + 4;
+        size_t file_end = body.find(boundary, file_start) - 4;  // Subtract 4 for the final \r\n
+        *file_data = body.substr(file_start, file_end - file_start);
+    }
+}
 
 std::string read_file(const std::string& file_path) {
   std::ifstream file(file_path); 
@@ -133,46 +121,22 @@ int main() {
   
   CROW_ROUTE(app, "/upload").methods(crow::HTTPMethod::Post)
   ([](const crow::request& req) {
-      
-    auto content_type_it = req.headers.find("Content-Type");
-
-    if (content_type_it == req.headers.end()) {
-      return crow::response(400, "Missing Content-type header");
-    }
-
-    std::string content_type = content_type_it->second;
-    std::string boundary = extract_boundary(content_type);
     
-    if(boundary.empty() ){
-      return crow::response(400, "Invalid Content-Type: boundary not found");
-    }
-    
-    // Debugging printout
-    std::cout << "Boundary: " << boundary << std::endl;
 
-   multipart_parser parser; 
-   FormData form_data; 
-   multipart_parser_init(&parser, boundary.c_str()); 
-   parser.data = &form_data;
-   
-   // setting callback function ptr for parser
-   multipart_parser_callbacks callbacks;
-   callbacks.on_part_data = on_part_data; 
-   callbacks.on_header_field = on_header_field; 
-   callbacks.on_part_data_end = on_part_data_end;
-
-   size_t parsed_bytes = multipart_parser_execute(&parser, req.body.c_str(), req.body.size());
-
-    std::string file_data = req.body;
+    std::string file_data, flags;
+    parse_multipart_data(req, req.body, &file_data, &flags); 
     std::string file_path = "/tmp/uploaded_file"; 
+    if (!file_data.empty() ) {
+      
+      std::ofstream file(file_path, std::ios::binary); 
+      file.write(file_data.c_str(), file_data.size()); 
+      file.close();
+      std::cout << "Saved file to disk" << std::endl;
+    }
     
-    std::ofstream file(file_path, std::ios::binary); 
-    file.write(req.body.c_str(), req.body.size()); 
-    file.close();
-
     if(!is_valid_file_signature(file_path)) {
       try {
-        //std::filesystem::remove(file_path); 
+        std::filesystem::remove(file_path); 
       } catch (const std::filesystem::filesystem_error& err) {
         std::cout << "Filesystem error: " << err.what() << std::endl; 
       }
@@ -180,7 +144,6 @@ int main() {
     }
 
 
-    std::string flags = req.url_params.get("flags") ? req.url_params.get("flags") : "none"; 
     std::cout << "Received flags: " << flags << std::endl;
 
     /* Counting number of flags */
@@ -194,12 +157,8 @@ int main() {
     }
     
     int num_flags = delim_count + 1;
-    char ** client_argv; string_to_char_array(flags, num_flags);
+    //char ** client_argv; string_to_char_array(flags, num_flags);
     
-    for (int i = 0; i < num_flags; i++) {
-      std:: cout << client_argv[i] <<  std::endl;
-    }
-
     RGBMatrix::Options matrix_options; 
     rgb_matrix::RuntimeOptions runtime_opt; 
 
