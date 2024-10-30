@@ -6,7 +6,7 @@
 #include "content-streamer.h"
 #include "file_checks.hpp"
 #include "string_manipulation.hpp"
-#include "multipart_parser.h"
+#include "image_handler.hpp"
 
 #include <fcntl.h>
 #include <math.h>
@@ -19,19 +19,19 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <filesystem>
-
 #include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
+#include <thread>
+#include <future>
 
-#include <Magick++.h>
-#include <magick/image.h>
-
-using rgb_matrix::Canvas;
-using rgb_matrix::FrameCanvas;
-using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
+
+static void SignalHandler(int signo) {
+  interrupt_received = true;
+}
+
 std::string extract_boundary(const std::string& content_type) {
     // Find the position of the "boundary=" part in the Content-Type header
     size_t boundary_pos = content_type.find("boundary=");
@@ -91,11 +91,15 @@ std::string read_file(const std::string& file_path) {
 
 int main() {
   crow::SimpleApp app; 
+  
+  //signal(SIGTERM, SignalHandler);
+  //signal(SIGINT,  SignalHandler);
 
   /* 
    * Route to serve HTML page
    */ 
-  
+ 
+
   CROW_ROUTE(app, "/")
   ([]() {
     std::string html_content = read_file("../html/upload.html");
@@ -105,7 +109,17 @@ int main() {
     return crow::response(html_content);
 
   });
-  
+ 
+ /* 
+  * Route to Clear Matrix 
+  */
+  CROW_ROUTE(app, "/clear") 
+  ([]() {
+   clear_matrix(); 
+   return crow::response(200, "Matrix Cleared"); 
+
+  });
+
  /* 
    * Route to handle favicon.ico request
    */ 
@@ -147,29 +161,29 @@ int main() {
     std::cout << "Received flags: " << flags << std::endl;
 
     /* Counting number of flags */
-    char delimeter = ' '; 
-    int delim_count = 0; 
-
-    for (int i = 0; i < flags.size(); i++) {
-      if (flags[i] == delimeter) {
-        delim_count++;
-      }
-    }
+    int numflags = countWords(flags); 
     
-    int num_flags = delim_count + 1;
-    //char ** client_argv; string_to_char_array(flags, num_flags);
-    
-    RGBMatrix::Options matrix_options; 
-    rgb_matrix::RuntimeOptions runtime_opt; 
+    auto future = std::async(std::launch::async, image_handler, flags, numflags);
+     
 
-    runtime_opt.drop_priv_user = getenv("SUDO_UID"); 
-    runtime_opt.drop_priv_group = getenv("SUDO_GID"); 
-
-    free_char_array(client_argv, num_flags); 
-
-    return crow::response(200, "Image received and processed");
+    return crow::response(200, "Image received and processing");
   });
-
+  
+  std::thread server_thread([&app]() {
   app.port(8080).multithreaded().run(); 
+  });
+  
+  // wait for interrupt_signals in main thread
+  while (!interrupt_received) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
+  }
+
+  //stop server when an interrupt is received
+    app.stop();
+  if (server_thread.joinable() ) {
+    server_thread.join();
+  } 
+
+  std::cout << "Server stopped gracefully." << std::endl;
   return 0; 
 }

@@ -16,4 +16,10 @@ char ** string_to_char_array(const std::string&, int&);
  * only for use with char** returned from 
  * string_to_char_array() 
  */
- void free_char_array(char**, int);
+void free_char_array(char**, int);
+
+/*
+ * counts number of space separted words
+ * in a std::string
+ */
+int countWords(std::string);

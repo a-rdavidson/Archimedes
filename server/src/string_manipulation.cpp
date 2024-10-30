@@ -34,3 +34,32 @@ void free_char_array(char** arr, int num_words) {
   }
   delete[] arr;
 }
+
+int countWords(std::string str) {
+    if (str.size() == 0) {
+    return 0;
+  }
+  std::vector<std::string> words;
+  std::string temp = "";
+  for (size_t i = 0; i < str.size(); i++) {
+    if (str[i] == ' ') {
+      words.push_back(temp);
+      temp = "";
+    }
+    else {
+      temp += str[i];
+    }
+  }
+
+  int count = 1;
+
+  for (size_t i = 0; i < words.size(); i++) {
+    if (words[i].size() != 0)
+      count++;
+  }
+
+  // Return number of words
+  // in the given string
+  return count;
+
+}
