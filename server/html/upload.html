@@ -1,18 +1,65 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Archimedes File Upload</title>
+    <style>
+        .conditional-input {
+            display: none;
+        }
+    </style>
+    <script>
+        function handleFileInput() {
+            const fileInput = document.getElementById("file");
+            const loopCountInput = document.getElementById("loopCountInput");
+            const playbackSpeedInput = document.getElementById("playbackSpeedInput");
+            const displayTimeInput = document.getElementById("displayTimeInput");
+
+            // Show display time for all file types
+            displayTimeInput.style.display = "block";
+
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const fileType = file.type;
+
+                // Show loop count and playback speed only for GIF and MP4 files
+                if (fileType === "image/gif" || fileType === "video/mp4") {
+                    loopCountInput.style.display = "block";
+                    playbackSpeedInput.style.display = "block";
+                } else {
+                    loopCountInput.style.display = "none";
+                    playbackSpeedInput.style.display = "none";
+                }
+            }
+        }
+    </script>
 </head>
 <body>
     <h1>Upload a File</h1>
     <form action="/upload" method="post" enctype="multipart/form-data">
         <label for="file">Choose a file:</label>
-        <input type="file" id="file" name="file" accept=".jpg,.jpeg,.png,.gif,.mp4" required><br><br>
+        <input type="file" id="file" name="file" accept=".jpg,.jpeg,.png,.gif,.mp4" required onchange="handleFileInput()"><br><br>
 
         <label for="flags">Enter flags:</label>
         <input type="text" id="flags" name="flags" placeholder="flag1=true&flag2=false"><br><br>
+
+        <!-- Conditional inputs for GIF/MP4 -->
+        <div id="loopCountInput" class="conditional-input">
+            <label for="loopCount">Loop Count:</label>
+            <input type="number" id="loopCount" name="loopCount" min="1" placeholder="Number of loops"><br><br>
+        </div>
+
+        <div id="playbackSpeedInput" class="conditional-input">
+            <label for="playbackSpeed">Animation Frame Delay:</label>
+            <input type="number" id="playbackSpeed" name="playbackSpeed" step="1" min="1" placeholder="Playback speed"><br><br>
+        </div>
+
+        <!-- Input for display time (visible for all file types) -->
+        <div id="displayTimeInput">
+            <label for="displayTime">Display Time (seconds):</label>
+            <input type="number" id="displayTime" name="displayTime" min="1" placeholder="Display time in seconds"><br><br>
+        </div>
 
         <button type="submit">Upload</button>
     </form>
@@ -22,3 +69,4 @@
     </form>
 </body>
 </html>
+
