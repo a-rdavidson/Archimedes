@@ -1,7 +1,7 @@
+#include "image_handler.hpp"
 #include "led-matrix.h"
 #include "pixel-mapper.h"
 #include "content-streamer.h"
-#include "image_handler.hpp"
 #include "string_manipulation.hpp"
 
 #include <fcntl.h>
@@ -24,11 +24,14 @@
 #include <Magick++.h>
 #include <magick/image.h>
 
+
 using rgb_matrix::Canvas;
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 RGBMatrix * matrix;
+
+
 
 typedef int64_t tmillis_t; 
 static const tmillis_t distant_future = (1LL<<40); // very long time
@@ -49,10 +52,6 @@ struct FileInfo {
   rgb_matrix::StreamIO *content_stream = nullptr;
 };
 
-bool interrupt_received;
-static void InterruptHandler(int signo) {
-  interrupt_received = true;
-}
 
 static tmillis_t GetTimeInMillis() {
   struct timeval tp;
@@ -167,11 +166,11 @@ void DisplayAnimation(const FileInfo *file,
   const tmillis_t override_anim_delay = file->params.anim_delay_ms;
   for (int k = 0;
        (loops < 0 || k < loops)
-         && !interrupt_received
+         && !interrupt_received && !stopThread
          && GetTimeInMillis() < end_time_ms;
        ++k) {
     uint32_t delay_us = 0;
-    while (!interrupt_received && GetTimeInMillis() <= end_time_ms
+    while (!stopThread && !interrupt_received && GetTimeInMillis() <= end_time_ms
            && reader.GetNext(offscreen_canvas, &delay_us)) {
       const tmillis_t anim_delay_ms =
         override_anim_delay >= 0 ? override_anim_delay : delay_us / 1000;
@@ -212,7 +211,7 @@ void image_handler(struct UploadedData req) {
   }
   const bool fill_width   = false; 
   const bool fill_height  = false;
-  bool do_center = false; 
+  bool do_center = true; 
   FrameCanvas *offscreen_canvas = matrix->CreateFrameCanvas(); 
 
   const char *filename = req.file_path.c_str(); 
@@ -236,15 +235,15 @@ void image_handler(struct UploadedData req) {
       const Magick::Image &img = image_sequence[i]; 
       int64_t delay_time_us; 
       if (file_info->is_multi_frame) {
-        std::cout << "multiframe" << std::endl; 
+        //std::cout << "multiframe" << std::endl; 
         delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
       } else {
-        std::cout << "1 frame " << std::endl; 
+        //std::cout << "1 frame " << std::endl; 
         delay_time_us = file_info->params.wait_ms * 1000; // single image
       }
       if (delay_time_us <= 0) {
         delay_time_us = 100 * 1000; 
-        std::cerr << "default setting delay_time_us" << std::endl;
+        //std::cerr << "default setting delay_time_us" << std::endl;
       }
       StoreInStream(img, delay_time_us, do_center, offscreen_canvas, &out);
       
@@ -252,9 +251,16 @@ void image_handler(struct UploadedData req) {
   }
   do {
     DisplayAnimation(file_info, matrix, offscreen_canvas);
-
-  } while (!interrupt_received);
+    std::cerr << "stopThread " << stopThread;
+    if (stopThread) {
+      threadCount--;
+      break;
+    }
+  } while (!interrupt_received && !stopThread);
 
   matrix->Clear(); 
+  std::cerr << "Matrix Cleared\n"; 
   delete matrix; 
+
+  return;
 }

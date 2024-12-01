@@ -1,4 +1,17 @@
-extern bool interrupt_received;
+#pragma once
+
+#include <cstdint>
+#include <string>
+#include "led-matrix.h"
+#include <atomic>
+
+using rgb_matrix::RGBMatrix;
+
+/* Global Variables */
+extern std::atomic<bool> interrupt_received;
+extern RGBMatrix * matrix;
+extern std::atomic<bool> stopThread;
+extern std::atomic<int> threadCount;
 typedef int64_t tmillis_t;
 
 struct UploadedData {

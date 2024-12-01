@@ -5,8 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Archimedes File Upload</title>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 0.8em;
+            color: #444;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            max-width: 400px;
+            padding: 2em;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        label, input, button {
+            width: 100%;
+            font-size: 1em;
+            margin: 0.5em 0;
+        }
+        input[type="file"] {
+            border: 1px solid #ddd;
+            padding: 0.5em;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        input[type="file"]:hover {
+            border-color: #888;
+        }
+        input[type="text"], input[type="number"] {
+            border: 1px solid #ddd;
+            padding: 0.6em;
+            border-radius: 4px;
+            transition: border-color 0.3s ease;
+        }
+        input[type="text"]:focus, input[type="number"]:focus {
+            border-color: #777;
+            outline: none;
+        }
+        button {
+            padding: 0.8em;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #4cae4c;
+        }
         .conditional-input {
             display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .conditional-input.show {
+            display: block;
+            opacity: 1;
+        }
+        .secondary-form {
+            margin-top: 1em;
         }
     </style>
     <script>
@@ -15,57 +92,66 @@
             const loopCountInput = document.getElementById("loopCountInput");
             const playbackSpeedInput = document.getElementById("playbackSpeedInput");
             const displayTimeInput = document.getElementById("displayTimeInput");
-
-            // Show display time for all file types
-            displayTimeInput.style.display = "block";
+            const flagsInput = document.getElementById("flagsInput");
 
             if (fileInput.files.length > 0) {
+                // Show display time and flags for all file types
+                displayTimeInput.classList.add("show");
+                flagsInput.classList.add("show");
+
                 const file = fileInput.files[0];
                 const fileType = file.type;
 
                 // Show loop count and playback speed only for GIF and MP4 files
                 if (fileType === "image/gif" || fileType === "video/mp4") {
-                    loopCountInput.style.display = "block";
-                    playbackSpeedInput.style.display = "block";
+                    loopCountInput.classList.add("show");
+                    playbackSpeedInput.classList.add("show");
                 } else {
-                    loopCountInput.style.display = "none";
-                    playbackSpeedInput.style.display = "none";
+                    loopCountInput.classList.remove("show");
+                    playbackSpeedInput.classList.remove("show");
                 }
+            } else {
+                // Hide all conditional fields if no file is selected
+                displayTimeInput.classList.remove("show");
+                flagsInput.classList.remove("show");
+                loopCountInput.classList.remove("show");
+                playbackSpeedInput.classList.remove("show");
             }
         }
     </script>
 </head>
 <body>
-    <h1>Upload a File</h1>
     <form action="/upload" method="post" enctype="multipart/form-data">
+        <h1>Upload a File</h1>
+        
         <label for="file">Choose a file:</label>
-        <input type="file" id="file" name="file" accept=".jpg,.jpeg,.png,.gif,.mp4" required onchange="handleFileInput()"><br><br>
+        <input type="file" id="file" name="file" accept=".jpg,.jpeg,.png,.gif,.mp4" required onchange="handleFileInput()">
 
-        <label for="flags">Enter flags:</label>
-        <input type="text" id="flags" name="flags" placeholder="flag1=true&flag2=false"><br><br>
-
-        <!-- Conditional inputs for GIF/MP4 -->
-        <div id="loopCountInput" class="conditional-input">
-            <label for="loopCount">Loop Count:</label>
-            <input type="number" id="loopCount" name="loopCount" min="1" placeholder="Number of loops"><br><br>
-        </div>
-
-        <div id="playbackSpeedInput" class="conditional-input">
-            <label for="playbackSpeed">Animation Frame Delay:</label>
-            <input type="number" id="playbackSpeed" name="playbackSpeed" step="1" min="1" placeholder="Playback speed"><br><br>
-        </div>
-
-        <!-- Input for display time (visible for all file types) -->
-        <div id="displayTimeInput">
+        <div class="conditional-input" id="displayTimeInput">
             <label for="displayTime">Display Time (seconds):</label>
-            <input type="number" id="displayTime" name="displayTime" min="1" placeholder="Display time in seconds"><br><br>
+            <input type="number" id="displayTime" name="displayTime" min="1" placeholder="Display time in seconds">
+        </div>
+
+        <div class="conditional-input" id="loopCountInput">
+            <label for="loopCount">Loop Count:</label>
+            <input type="number" id="loopCount" name="loopCount" min="1" placeholder="Number of loops">
+        </div>
+
+        <div class="conditional-input" id="playbackSpeedInput">
+            <label for="playbackSpeed">Animation Frame Delay:</label>
+            <input type="number" id="playbackSpeed" name="playbackSpeed" step="1" min="1" placeholder="Playback speed">
+        </div>
+
+        <div class="conditional-input" id="flagsInput">
+            <label for="flags">Enter flags:</label>
+            <input type="text" id="flags" name="flags" placeholder="flag1=true&flag2=false">
         </div>
 
         <button type="submit">Upload</button>
     </form>
-    <br><br>
-    <form action="/clear" method="get">
-      <button type="submit">Clear Matrix</button>
+
+    <form action="/clear" method="get" class="secondary-form">
+        <button type="submit">Clear Matrix</button>
     </form>
 </body>
 </html>

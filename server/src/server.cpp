@@ -25,12 +25,20 @@
 #include <vector>
 #include <thread>
 #include <future>
+#include <atomic> 
+
 
 using rgb_matrix::StreamReader;
+
+std::atomic<int> threadCount = 0; 
+std::atomic<bool> stopThread(false);
+std::atomic<bool> interrupt_received(false);
 
 static void SignalHandler(int signo) {
   interrupt_received = true;
 }
+
+
 std::string read_file(const std::string& file_path) {
   std::ifstream file(file_path); 
   if (! file.is_open()) {
@@ -46,8 +54,8 @@ std::string read_file(const std::string& file_path) {
 int main() {
   crow::SimpleApp app; 
   
-  //signal(SIGTERM, SignalHandler);
-  //signal(SIGINT,  SignalHandler);
+  signal(SIGTERM, SignalHandler);
+  signal(SIGINT,  SignalHandler);
 
   /* 
    * Route to serve HTML page
@@ -69,9 +77,20 @@ int main() {
   */
   CROW_ROUTE(app, "/clear") 
   ([]() {
-   //clear_matrix(); 
-   return crow::response(200, "Matrix Cleared"); 
-
+   
+    stopThread = true;
+        return crow::response(400, R"(
+                <html>
+                <head><title>Matrix Cleared</title></head>
+                <body>
+                    <script>
+                        alert("Matrix Cleared");
+                        window.location.href = "/";
+                    </script>
+                </body>
+                </html>
+            )");
+ 
   });
 
  /* 
@@ -89,6 +108,25 @@ int main() {
   
   CROW_ROUTE(app, "/upload").methods(crow::HTTPMethod::Post)
   ([](const crow::request& req) {
+  /* reset stopThread in to reuse thread for next use */ 
+  
+  std::cout << "threadCount " << threadCount << std::endl;
+
+  if (threadCount > 0) {
+        return crow::response(400, R"(
+                <html>
+                <head><title>Error</title></head>
+                <body>
+                    <script>
+                        alert("An error occurred: the LED Matrix May Already be showing an image.");
+                        window.location.href = "/";
+                    </script>
+                </body>
+                </html>
+            )");
+  }
+
+  stopThread = false;
   
   std::string file_data, flags, loopCount, frameDelay, displayTime;  
   crow::multipart::message_view msg(req); 
@@ -113,10 +151,20 @@ int main() {
       } catch (const std::filesystem::filesystem_error& err) {
         std::cout << "Filesystem error: " << err.what() << std::endl; 
       }
-      return crow::response(400, "Invalid file signature. File Format not supported");
+      return crow::response(400, R"(
+                <html>
+                <head><title>Error</title></head>
+                <body>
+                    <script>
+                        alert("An error occurred: The Filetype you Uploaded is Not Supported.");
+                        window.location.href = "/";
+                    </script>
+                </body>
+                </html>
+            )");
     }
-
-  for (int i = 1; i < msg.parts.size(); i++) {
+  
+  for (size_t i = 1; i < msg.parts.size(); i++) {
     std::cout << "i: " << i << msg.parts[i] << std::endl;
   }
 
@@ -124,13 +172,30 @@ int main() {
 
   image_data.file_path        = file_path; 
   image_data.flags            = flags; 
-  image_data.animFrameDelay   = frameDelay.empty()  ? 80 : std::stoi(frameDelay); 
-  image_data.loopCount        = loopCount.empty()   ? 999999   : std::stoi(loopCount); 
+  image_data.animFrameDelay   = frameDelay.empty()  ? 80     : std::stoi(frameDelay); 
+  image_data.loopCount        = loopCount.empty()   ? 999999 : std::stoi(loopCount); 
   image_data.displayTime      = displayTime.empty() ? 999999 : std::stoi(displayTime); 
   
-  image_handler(image_data); 
 
-    return crow::response(200, "Image received and processing");
+  std::cout << "animDelay " << image_data.animFrameDelay << std::endl;
+  std::cout << "loopCount " << image_data.loopCount << std::endl;
+  std::cout << "displayTime " << image_data.displayTime << std::endl;
+  
+  threadCount++;
+  std::thread t1(image_handler, image_data); 
+  t1.detach();   
+  
+  return crow::response(400, R"(
+                <html>
+                <head><title>Success</title></head>
+                <body>
+                    <script>
+                        alert("Your File has been received and processed");
+                        window.location.href = "/";
+                    </script>
+                </body>
+                </html>
+            )");
   });
   
   app.port(8080).multithreaded().run(); 
